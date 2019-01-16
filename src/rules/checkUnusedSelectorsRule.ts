@@ -1,0 +1,170 @@
+/**
+ * Copyright (c) 2019-present, ProductBoard, Inc.
+ * All rights reserved.
+ */
+
+import * as ts from "typescript";
+import * as Lint from "tslint";
+
+const watchedIdentifiers: { [key: string]: "store" | "selector" } = {};
+
+export class Rule extends Lint.Rules.AbstractRule {
+  public static NOT_LISTENING = (name: string) =>
+    `You forgot to listen for the "${name}" dependency`;
+  public static UNUSED_SELECTOR = (name: string) =>
+    `The "${name}" dependency  is unused. This has performance impact!`;
+
+  public apply(sourceFile: ts.SourceFile): Array<Lint.RuleFailure> {
+    return this.applyWithWalker(
+      new NoUnusedSelectorsWalker(sourceFile, this.getOptions())
+    );
+  }
+}
+
+const getImports = (node: ts.ImportDeclaration) => {
+  const importClause = node.importClause;
+
+  if (!importClause) return [];
+
+  if (importClause.name) {
+    return [importClause.name.escapedText];
+  }
+
+  return (importClause.namedBindings as any).elements.map(
+    element => element.name.escapedText
+  );
+};
+
+const addToWatchedIdentifiers = (node: any, type: "store" | "selector") => {
+  for (const i of getImports(node)) {
+    watchedIdentifiers[i] = type;
+  }
+};
+
+// The walker takes care of all the work.
+class NoUnusedSelectorsWalker extends Lint.RuleWalker {
+  private checkSelectors(node: any) {
+    const [selectorsNode, implementationNode] = node.arguments;
+
+    if (
+      selectorsNode.kind === ts.SyntaxKind.ArrayLiteralExpression &&
+      implementationNode.kind === ts.SyntaxKind.ArrowFunction
+    ) {
+      const selectors = (selectorsNode as any).elements.map(
+        element => element.text
+      );
+
+      const usedSelectors: Array<string> = [];
+
+      const addToUsed = (node, identifier) => {
+        if (!identifier) return;
+
+        usedSelectors.push(identifier);
+
+        if (watchedIdentifiers[identifier] && !selectors.includes(identifier)) {
+          this.addFailure(
+            this.createFailure(
+              node.getStart(),
+              node.getWidth(),
+              Rule.NOT_LISTENING(identifier)
+            )
+          );
+        }
+      };
+
+      const cb = (node: ts.Node): void => {
+        let identifier;
+        let identifierNode;
+
+        if (node.kind === ts.SyntaxKind.CallExpression) {
+          (node as any).arguments.map((e: ts.Node) => {
+            if (e.kind !== ts.SyntaxKind.PropertyAccessExpression) return;
+            const n = (e as any).expression;
+            if (!n) return;
+            identifier = n.escapedText;
+            addToUsed(n, identifier);
+          });
+
+          identifierNode = (node as any).expression;
+          if (identifierNode) {
+            identifier = identifierNode.escapedText as string;
+            addToUsed(identifierNode, identifier);
+          }
+
+          if (identifierNode.kind === ts.SyntaxKind.PropertyAccessExpression) {
+            identifierNode = identifierNode.expression;
+
+            if (identifierNode) {
+              identifier = identifierNode.escapedText as string;
+              addToUsed(identifierNode, identifier);
+
+              if (identifierNode.arguments) {
+                identifierNode.arguments.map(e => {
+                  const n = (e as any).expression;
+                  if (!n) return;
+                  identifier = n.escapedText;
+                  addToUsed(n, identifier);
+                });
+              }
+            }
+          }
+        }
+
+        return ts.forEachChild(node, cb);
+      };
+
+      // walk the implementation
+      ts.forEachChild(implementationNode, cb);
+
+      const unusedSelectors = selectors.filter(
+        selector => !usedSelectors.includes(selector)
+      );
+
+      unusedSelectors.forEach(unusedSelector => {
+        const unusedSelectorsNode = (selectorsNode as any).elements.find(
+          element => element.escapedText === unusedSelector
+        );
+
+        if (unusedSelectorsNode) {
+          this.addFailure(
+            this.createFailure(
+              unusedSelectorsNode.getStart(),
+              unusedSelectorsNode.getWidth(),
+              Rule.UNUSED_SELECTOR(unusedSelector)
+            )
+          );
+        }
+      });
+    }
+  }
+
+  public visitImportDeclaration(node: ts.ImportDeclaration) {
+    if (!node.importClause) return;
+
+    const moduleName = (node.moduleSpecifier as any).text;
+
+    if (moduleName.match(/store/i)) {
+      addToWatchedIdentifiers(node, "store");
+    }
+
+    if (moduleName.match(/selectors/i)) {
+      addToWatchedIdentifiers(node, "selector");
+    }
+
+    super.visitImportDeclaration(node);
+  }
+
+  public visitCallExpression(node: ts.CallExpression) {
+    const identifier = (node.expression as any).text;
+
+    if (
+      node.expression.kind === ts.SyntaxKind.Identifier &&
+      // support select lib and aso connect called as argument, for instance with 'compose'
+      (identifier === "select" || identifier === "connect")
+    ) {
+      this.checkSelectors(node);
+    }
+
+    super.visitCallExpression(node);
+  }
+}

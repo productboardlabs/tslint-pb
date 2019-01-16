@@ -1,0 +1,23 @@
+{
+  "name": "@productboard/tslint",
+  "version": "1.0.0",
+  "files": [
+    "build/"
+  ],
+  "main": "tslint-pb.json",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p ./",
+    "build:watch": "tsc -p ./ -w",
+    "test": "./scripts/test-rules.sh",
+    "prepublish": "build && cp -f README.md tslint-pb.json build/"
+  },
+  "dependencies": {
+    "tslint": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^10.12.18",
+    "tslint": "^5.12.1",
+    "typescript": "^3.2.2"
+  }
+}

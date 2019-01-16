@@ -1,0 +1,6 @@
+import { show, hide } from 'selectors/some';
+
+export default connect([show, hide], () => ({
+  a: show(),
+  b: hide(),
+}))(component);
