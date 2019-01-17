@@ -1,5 +1,5 @@
 {
-  "name": "@productboard/tslint",
+  "name": "@productboard/tslint-pb",
   "version": "1.0.0",
   "files": [
     "build/"
@@ -10,7 +10,7 @@
     "build": "tsc -p ./",
     "build:watch": "tsc -p ./ -w",
     "test": "./scripts/test-rules.sh",
-    "prepublish": "build && cp -f README.md tslint-pb.json build/"
+    "prepublish": "yarn run build && cp -f README.md tslint-pb.json build/"
   },
   "dependencies": {
     "tslint": "*"
