@@ -2,26 +2,52 @@
  * Copyright (c) 2019-present, ProductBoard, Inc.
  * All rights reserved.
  */
-
-import * as Lint from "tslint";
-import * as ts from "typescript";
+import * as Lint from 'tslint';
+import * as ts from 'typescript';
 
 const ERROR = {
-  LINE_ABOVE: "Insert line above",
+  LINE_ABOVE: 'Insert line above',
   REMOVE_EXTRA_LINE_ABOVE: n => `Remove ${n} extra line above`,
   UNEXPECTED_SEPARATOR: n =>
     `Unexpected group separator, remove ${n} extra line above`,
-  ABSOLUTE_FIRST: "Absolute path should come first",
-  WRONG_ORDER: "Wrong order of the group",
-  ABZ: "Incorect alphabetal order, replace the order with the next line",
-  FATAL: "Import convention has been violated",
-  TOGETHER: "All imports has to be defined together"
+  ABSOLUTE_FIRST: 'Absolute path should come first',
+  WRONG_ORDER: 'Wrong order of the group',
+  ABZ: 'Incorect alphabetal order, replace the order with the next line',
+  FATAL: 'Import convention has been violated',
+  TOGETHER: 'All imports has to be defined together',
 };
 
-const UNDEFINED_KEYWORD = "undefined"; // undefined type in convention array
+type ImportType = {
+  i: {
+    node: ts.ImportDeclaration;
+    type: string;
+    text: string;
+    moduleSpecifier: string;
+    end: number;
+    start: number;
+  };
+  id: number;
+};
+
+type ImportDeclarationWithJSDoc = ts.ImportDeclaration & {
+  jsDoc: Array<{ text: string; end: number }>;
+};
+
+type Configuration = {
+  convention: Array<string | null>;
+  recognizer: {
+    [key: string]:
+      | string
+      | Array<string>
+      | { regex: string; flags: string }
+      | Array<{ regex: string; flags: string }>;
+  };
+};
+
+const UNDEFINED_KEYWORD = 'undefined'; // undefined type in convention array
 
 function isAbsolute(text) {
-  return text[0] === ".";
+  return text[0] === '.';
 }
 
 function countGroupingSeparator(text) {
@@ -33,13 +59,16 @@ function isThereGroupingSeparator(text) {
 }
 
 function doesItFollowConvention(
-  { currentImport, previousImport },
-  configuration
+  {
+    currentImport,
+    previousImport,
+  }: { currentImport: ImportType; previousImport: ImportType },
+  configuration: Configuration,
 ): [boolean, string?] {
   const { convention } = configuration;
 
   const currentTypeIndex = convention.findIndex(
-    type => type === currentImport.i.type
+    type => type === currentImport.i.type,
   );
   if (!previousImport.i) {
     return [true];
@@ -87,10 +116,7 @@ function doesItFollowConvention(
       return [true];
     }
 
-    if (
-      convention[i] === null &&
-      !isThereGroupingSeparator(currentImport.i.text)
-    ) {
+    if (convention[i] === null && !isThereGroupingSeparator(currentImport.i.text)) {
       const lines = countGroupingSeparator(currentImport.i.text);
       if (lines > 2) {
         const extra = lines - 2;
@@ -107,15 +133,13 @@ function doesItFollowConvention(
 
 export class Rule extends Lint.Rules.AbstractRule {
   public apply(sourceFile: ts.SourceFile): Array<Lint.RuleFailure> {
-    return this.applyWithWalker(
-      new ImportGroupOrder(sourceFile, this.getOptions())
-    );
+    return this.applyWithWalker(new SortedImports(sourceFile, this.getOptions()));
   }
 }
 
 // The walker takes care of all the work.
-class ImportGroupOrder extends Lint.RuleWalker {
-  private imports;
+class SortedImports extends Lint.RuleWalker {
+  private imports: ImportsContainer;
   private configuration;
   private importDefinitionFinished = false;
   private hasCriticalError = false;
@@ -123,18 +147,9 @@ class ImportGroupOrder extends Lint.RuleWalker {
   constructor(sourceFile, options) {
     super(sourceFile, options);
 
-    const configuration = { ...options.ruleArguments[0] } as {
-      convention: Array<string | null>;
-      recognizer: {
-        [key: string]:
-          | RegExp
-          | Array<RegExp>
-          | { regex: string; flags: string }
-          | Array<{ regex: string; flags: string }>;
-      };
-    };
+    const configuration = { ...options.ruleArguments[0] } as Configuration;
 
-    if (!configuration) throw new Error("Config has not been found!");
+    if (!configuration) throw new Error('Config has not been found!');
 
     if (!Array.isArray(configuration.convention)) {
       throw new Error("'convention' has to be an array!");
@@ -147,11 +162,14 @@ class ImportGroupOrder extends Lint.RuleWalker {
             throw new Error("'undefined' type can't have recognizer!");
           }
 
-          const makeRegExp = exp => {
-            const flags = exp.flags || "";
-            const regex = exp.regex || exp;
+          const makeRegExp = (exp: { flags?: string; regex: string } | string) => {
+            if (typeof exp === 'string') {
+              return new RegExp(exp);
+            }
 
-            return new RegExp(regex, flags);
+            const flags = exp.flags || '';
+
+            return new RegExp(exp.regex, flags);
           };
 
           const strategy = Array.isArray(r) ? r : [r];
@@ -164,28 +182,28 @@ class ImportGroupOrder extends Lint.RuleWalker {
           return acc;
         }, {});
     } catch (e) {
-      throw new Error("Wrong recognizer format!");
+      throw new Error('Wrong recognizer format!');
     }
 
     this.imports = new ImportsContainer(sourceFile.text, configuration);
     this.configuration = configuration;
   }
 
-  public visitSourceFile(node: ts.SourceFile) {
-    ts.forEachChild(node, n => {
-      if (n.kind === ts.SyntaxKind.ImportDeclaration) {
+  public visitSourceFile(startNode: ts.SourceFile) {
+    ts.forEachChild(startNode, node => {
+      if (node.kind === ts.SyntaxKind.ImportDeclaration) {
         if (this.importDefinitionFinished) {
           this.addFailure(
-            this.createFailure(n.getStart(), n.getWidth(), ERROR.TOGETHER)
+            this.createFailure(node.getStart(), node.getWidth(), ERROR.TOGETHER),
           );
         }
 
-        const currentImport = this.imports.add(n);
+        const currentImport = this.imports.add(node as ts.ImportDeclaration);
         const previousImport = this.imports.previous(currentImport);
 
         const [status, error] = doesItFollowConvention(
           { currentImport, previousImport },
-          this.configuration
+          this.configuration,
         );
 
         if (!status) {
@@ -195,8 +213,8 @@ class ImportGroupOrder extends Lint.RuleWalker {
             this.createFailure(
               currentImport.i.node.getStart(),
               currentImport.i.node.getWidth(),
-              error as string
-            )
+              error as string,
+            ),
           );
         }
       } else {
@@ -209,29 +227,22 @@ class ImportGroupOrder extends Lint.RuleWalker {
                 this.imports.getLast().i.node.getStart(),
                 this.imports.getLast().i.node.getWidth(),
                 ERROR.FATAL,
-                this.imports.getGeneralImportFix()
-              )
+                this.imports.getGeneralImportFix(),
+              ),
             );
           }
         }
       }
     });
 
-    super.visitSourceFile(node);
+    super.visitSourceFile(startNode);
   }
 }
 
 class ImportsContainer {
-  private imports: Array<{
-    node: ts.Node;
-    start: number;
-    end: number;
-    text: string;
-    moduleSpecifier: string;
-    type: string;
-  }> = [];
+  private imports: Array<ImportType['i']> = [];
   private banner = 0;
-  private sourceFile = "";
+  private sourceFile = '';
   private configuration;
 
   constructor(sourceFile, configuration) {
@@ -259,21 +270,18 @@ class ImportsContainer {
     return UNDEFINED_KEYWORD;
   }
 
-  public previous({ id }) {
+  public previous({ id }: ImportType): ImportType {
     return { i: this.imports[id - 1], id: id - 1 };
   }
 
-  public getLast() {
-    return {
-      i: this.imports[this.imports.length - 1],
-      id: this.imports.length - 1
-    };
+  public getLast(): ImportType {
+    return { i: this.imports[this.imports.length - 1], id: this.imports.length - 1 };
   }
 
-  public add(node) {
+  public add(node: ts.ImportDeclaration) {
     const start = node.pos;
     const end = node.end;
-    const moduleSpecifier = node.moduleSpecifier.text;
+    const moduleSpecifier = (node.moduleSpecifier as ts.StringLiteral).text;
 
     const newLength = this.imports.push({
       node,
@@ -281,14 +289,14 @@ class ImportsContainer {
       end,
       text: this.sourceFile.substring(start, end),
       moduleSpecifier,
-      type: this.getType(moduleSpecifier)
+      type: this.getType(moduleSpecifier),
     });
 
     const lastIndex = newLength - 1;
 
     return {
       i: this.imports[lastIndex],
-      id: lastIndex
+      id: lastIndex,
     };
   }
 
@@ -296,8 +304,11 @@ class ImportsContainer {
     const imports = [...this.imports];
 
     // let's handle banner properly
-    if ((imports[0].node as any).jsDoc && (imports[0].node as any).jsDoc[0]) {
-      this.banner = (imports[0].node as any).jsDoc[0].end; // where banner ends
+    if (
+      (imports[0].node as ImportDeclarationWithJSDoc).jsDoc &&
+      (imports[0].node as ImportDeclarationWithJSDoc).jsDoc[0]
+    ) {
+      this.banner = (imports[0].node as ImportDeclarationWithJSDoc).jsDoc[0].end; // where banner ends
       imports[0].text = imports[0].text.slice(this.banner);
     }
 
@@ -307,7 +318,7 @@ class ImportsContainer {
      * @param prev
      * @param next
      */
-    const sortImports = (prev, next) => {
+    const sortImports = (prev: ImportType['i'], next: ImportType['i']) => {
       const prevModuleText = prev.moduleSpecifier;
       const nextModuleText = next.moduleSpecifier;
 
@@ -329,23 +340,23 @@ class ImportsContainer {
       return 0;
     };
 
-    const groupsOfImports = imports.reduce((acc, v) => {
-      if (!acc[v.type]) {
-        acc[v.type] = [v];
+    const groupsOfImports = imports.reduce((acc, importObject) => {
+      if (!acc[importObject.type]) {
+        acc[importObject.type] = [importObject];
       } else {
-        acc[v.type].push(v);
+        acc[importObject.type].push(importObject);
       }
 
       return acc;
-    }, {});
+    }, {}) as { [key: string]: Array<ImportType['i']> };
 
     const { convention } = this.configuration;
 
-    const rewrittenImports = convention
+    const rewrittenImports: string = convention
       .reduce(
-        (acc: { text: string; blank: boolean }, v: any) => {
+        (acc: { text: string; blank: boolean }, v: string) => {
           if (v === null && !acc.blank) {
-            acc.text += "\n";
+            acc.text += '\n';
             acc.blank = true;
 
             return acc;
@@ -357,20 +368,20 @@ class ImportsContainer {
             groupsOfImports[v]
               .sort(sortImports)
               .map(({ text }) => text.trim())
-              .join("\n") + "\n";
+              .join('\n') + '\n';
 
           acc.blank = false;
 
           return acc;
         },
-        { text: "", blank: false }
+        { text: '', blank: false },
       )
       .text.trim();
 
     return Lint.Replacement.replaceFromTo(
       this.imports[0].start + this.banner,
       this.imports[this.imports.length - 1].end,
-      `${this.banner ? "\n\n" : ""}${rewrittenImports}`
+      `${this.banner ? '\n\n' : ''}${rewrittenImports}`,
     );
   }
 }
