@@ -27,15 +27,18 @@ const getImports = (node: ts.ImportDeclaration) => {
   if (!importClause) return [];
 
   if (importClause.name) {
-    return [importClause.name.escapedText];
+    return [importClause.name.text];
   }
 
-  return (importClause.namedBindings as any).elements.map(
-    element => element.name.escapedText
+  return (importClause.namedBindings as ts.NamedImports).elements.map(
+    element => element.name.text
   );
 };
 
-const addToWatchedIdentifiers = (node: any, type: "store" | "selector") => {
+const addToWatchedIdentifiers = (
+  node: ts.ImportDeclaration,
+  type: "store" | "selector"
+) => {
   for (const i of getImports(node)) {
     watchedIdentifiers[i] = type;
   }
@@ -43,16 +46,16 @@ const addToWatchedIdentifiers = (node: any, type: "store" | "selector") => {
 
 // The walker takes care of all the work.
 class NoUnusedSelectorsWalker extends Lint.RuleWalker {
-  private checkSelectors(node: any) {
+  private checkSelectors(node: ts.CallExpression) {
     const [selectorsNode, implementationNode] = node.arguments;
 
     if (
       selectorsNode.kind === ts.SyntaxKind.ArrayLiteralExpression &&
       implementationNode.kind === ts.SyntaxKind.ArrowFunction
     ) {
-      const selectors = (selectorsNode as any).elements.map(
-        element => element.text
-      );
+      const selectors = (selectorsNode as ts.ArrayLiteralExpression).elements
+        .filter(a => a.kind === ts.SyntaxKind.Identifier)
+        .map(element => (element as ts.Identifier).text);
 
       const usedSelectors: Array<string> = [];
 
@@ -72,45 +75,40 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
         }
       };
 
-      const cb = (node: ts.Node): void => {
-        let identifier;
-        let identifierNode;
+      const cb = (startNode: ts.Node): void => {
+        let identifier: string;
+        let identifierNode: ts.Node;
 
-        if (node.kind === ts.SyntaxKind.CallExpression) {
-          (node as any).arguments.map((e: ts.Node) => {
-            if (e.kind !== ts.SyntaxKind.PropertyAccessExpression) return;
-            const n = (e as any).expression;
-            if (!n) return;
-            identifier = n.escapedText;
-            addToUsed(n, identifier);
+        if (startNode.kind === ts.SyntaxKind.CallExpression) {
+          (startNode as ts.CallExpression).arguments.map(element => {
+            if (element.kind !== ts.SyntaxKind.PropertyAccessExpression) return;
+            const node = (element as ts.PropertyAccessExpression)
+              .expression as ts.Identifier;
+            if (!node) return;
+            identifier = node.text;
+            addToUsed(node, identifier);
           });
 
-          identifierNode = (node as any).expression;
+          identifierNode = (startNode as ts.CallExpression)
+            .expression as ts.Identifier;
+
           if (identifierNode) {
-            identifier = identifierNode.escapedText as string;
+            identifier = (identifierNode as ts.Identifier).text as string;
             addToUsed(identifierNode, identifier);
           }
 
           if (identifierNode.kind === ts.SyntaxKind.PropertyAccessExpression) {
-            identifierNode = identifierNode.expression;
+            identifierNode = (identifierNode as ts.PropertyAccessExpression)
+              .expression;
 
             if (identifierNode) {
-              identifier = identifierNode.escapedText as string;
+              identifier = (identifierNode as ts.Identifier).text as string;
               addToUsed(identifierNode, identifier);
-
-              if (identifierNode.arguments) {
-                identifierNode.arguments.map(e => {
-                  const n = (e as any).expression;
-                  if (!n) return;
-                  identifier = n.escapedText;
-                  addToUsed(n, identifier);
-                });
-              }
             }
           }
         }
 
-        return ts.forEachChild(node, cb);
+        return ts.forEachChild(startNode, cb);
       };
 
       // walk the implementation
@@ -121,8 +119,8 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
       );
 
       unusedSelectors.forEach(unusedSelector => {
-        const unusedSelectorsNode = (selectorsNode as any).elements.find(
-          element => element.escapedText === unusedSelector
+        const unusedSelectorsNode = (selectorsNode as ts.ArrayLiteralExpression).elements.find(
+          element => (element as ts.Identifier).text === unusedSelector
         );
 
         if (unusedSelectorsNode) {
@@ -141,7 +139,7 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
   public visitImportDeclaration(node: ts.ImportDeclaration) {
     if (!node.importClause) return;
 
-    const moduleName = (node.moduleSpecifier as any).text;
+    const moduleName = (node.moduleSpecifier as ts.StringLiteral).text;
 
     if (moduleName.match(/store/i)) {
       addToWatchedIdentifiers(node, "store");
@@ -155,7 +153,7 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
   }
 
   public visitCallExpression(node: ts.CallExpression) {
-    const identifier = (node.expression as any).text;
+    const identifier = (node.expression as ts.Identifier).text;
 
     if (
       node.expression.kind === ts.SyntaxKind.Identifier &&
