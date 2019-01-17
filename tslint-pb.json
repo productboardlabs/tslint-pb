@@ -1,5 +1,5 @@
 {
-  "rulesDirectory": "./rules",
+  "rulesDirectory": "./build/rules",
   "rules": {
     "check-unused-selectors": true,
     "import-group-order": [

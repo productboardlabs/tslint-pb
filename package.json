@@ -7,12 +7,12 @@
   "main": "tslint-pb.json",
   "license": "MIT",
   "scripts": {
-    "build": "tsc -p ./",
-    "build:watch": "tsc -p ./ -w",
     "test": "./scripts/test-rules.sh",
-    "prepublish": "yarn run build && cp -f README.md tslint-pb.json build/"
+    "build": "tsc -p ./",
+    "build:watch": "yarn run build -w",
+    "prepublish": "yarn run build"
   },
-  "dependencies": {
+  "peerDependencies": {
     "tslint": "*"
   },
   "devDependencies": {
