@@ -10,7 +10,7 @@ const watchedIdentifiers: { [key: string]: "store" | "selector" } = {};
 
 export class Rule extends Lint.Rules.AbstractRule {
   public static NOT_LISTENING = (name: string) =>
-    `You forgot to listen for the "${name}" dependency`;
+    `You forgot to listen for the "${name}" dependency!`;
   public static UNUSED_SELECTOR = (name: string) =>
     `The "${name}" dependency  is unused. This has performance impact!`;
 
@@ -23,22 +23,40 @@ export class Rule extends Lint.Rules.AbstractRule {
 
 const getImports = (node: ts.ImportDeclaration) => {
   const importClause = node.importClause;
+  let collectedIdentifiers: Array<string> = [];
 
-  if (!importClause) return [];
+  if (!importClause) return collectedIdentifiers;
 
   if (importClause.name) {
-    return [importClause.name.text];
+    collectedIdentifiers = [importClause.name.text];
   }
 
-  return (importClause.namedBindings as ts.NamedImports).elements.map(
-    element => element.name.text
-  );
+  const namedImports = importClause.namedBindings as ts.NamedImports;
+
+  return [
+    ...collectedIdentifiers,
+    ...(namedImports
+      ? namedImports.elements.map(element => element.name.text)
+      : [])
+  ];
 };
 
 const addToWatchedIdentifiers = (
   node: ts.ImportDeclaration,
-  type: "store" | "selector"
+  type: "store" | "selector",
+  onlyDefault?: boolean
 ) => {
+  if (onlyDefault) {
+    const importClause = node.importClause;
+
+    if (!importClause) return;
+    if (!importClause.name) return;
+
+    watchedIdentifiers[importClause.name.text] = type;
+
+    return;
+  }
+
   for (const i of getImports(node)) {
     watchedIdentifiers[i] = type;
   }
@@ -46,6 +64,28 @@ const addToWatchedIdentifiers = (
 
 // The walker takes care of all the work.
 class NoUnusedSelectorsWalker extends Lint.RuleWalker {
+  private referenceText: string;
+
+  constructor(sourceFile, options) {
+    super(sourceFile, options);
+
+    const configuration = { ...options.ruleArguments[0] } as {
+      reference?: string;
+    };
+
+    this.referenceText = configuration.reference || "";
+  }
+
+  private addIssue(node: ts.Node, text: string) {
+    this.addFailure(
+      this.createFailure(
+        node.getStart(),
+        node.getWidth(),
+        text + (this.referenceText ? ` ${this.referenceText}` : "")
+      )
+    );
+  }
+
   private checkSelectors(node: ts.CallExpression) {
     const [selectorsNode, implementationNode] = node.arguments;
 
@@ -65,19 +105,28 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
         usedSelectors.push(identifier);
 
         if (watchedIdentifiers[identifier] && !selectors.includes(identifier)) {
-          this.addFailure(
-            this.createFailure(
-              node.getStart(),
-              node.getWidth(),
-              Rule.NOT_LISTENING(identifier)
-            )
-          );
+          this.addIssue(node, Rule.NOT_LISTENING(identifier));
         }
       };
 
       const cb = (startNode: ts.Node): void => {
         let identifier: string;
         let identifierNode: ts.Node;
+
+        /**
+         * This gonna cover case like:
+         * const something = debug ? Store.someMethod : Another.someMethod;
+         */
+        if (
+          startNode.kind === ts.SyntaxKind.PropertyAccessExpression &&
+          (startNode as ts.PropertyAccessExpression).expression.kind ===
+            ts.SyntaxKind.Identifier
+        ) {
+          identifier = ((startNode as ts.PropertyAccessExpression)
+            .expression as ts.Identifier).text as string;
+
+          addToUsed(startNode, identifier);
+        }
 
         if (startNode.kind === ts.SyntaxKind.CallExpression) {
           (startNode as ts.CallExpression).arguments.map(element => {
@@ -124,12 +173,9 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
         );
 
         if (unusedSelectorsNode) {
-          this.addFailure(
-            this.createFailure(
-              unusedSelectorsNode.getStart(),
-              unusedSelectorsNode.getWidth(),
-              Rule.UNUSED_SELECTOR(unusedSelector)
-            )
+          this.addIssue(
+            unusedSelectorsNode,
+            Rule.UNUSED_SELECTOR(unusedSelector)
           );
         }
       });
@@ -142,7 +188,7 @@ class NoUnusedSelectorsWalker extends Lint.RuleWalker {
     const moduleName = (node.moduleSpecifier as ts.StringLiteral).text;
 
     if (moduleName.match(/store/i)) {
-      addToWatchedIdentifiers(node, "store");
+      addToWatchedIdentifiers(node, "store", true);
     }
 
     if (moduleName.match(/selectors/i)) {
