@@ -1,0 +1,27 @@
+connect(
+  [
+    AlonglonglongStore,
+    getLongLongLongA,
+    ~~~~~~~~~~~~~~~~  [Dependency array is not sorted correctly!] 
+    BlonglonglongStore,
+    getLongLongLongB,
+    getLongLongLongC,
+  ],
+  () => {},
+)
+
+select(
+  [
+    getA,
+    ~~~~  [Dependency array is not sorted correctly!]
+    AStore,
+  ],
+  () => {},
+)
+
+select(
+  [
+    BStore, AStore, ...weirdMagic,
+  ],
+  () => {},
+)
