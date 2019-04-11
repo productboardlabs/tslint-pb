@@ -1,0 +1,3 @@
+import FeStore, { Filip, UNSORTED_SROT, sortByKarel, sortByPepa } from 'something';
+
+console.log('a');
