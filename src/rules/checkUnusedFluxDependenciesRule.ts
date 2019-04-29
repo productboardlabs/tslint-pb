@@ -149,7 +149,10 @@ class NoUnusedDependenciesWalker extends Lint.RuleWalker {
       }
 
       const cb = (startNode: ts.Node): void => {
-        if (startNode.kind === ts.SyntaxKind.Identifier) {
+        if (
+          startNode.kind === ts.SyntaxKind.Identifier &&
+          startNode.parent.kind !== ts.SyntaxKind.TypeReference
+        ) {
           const identifier = (startNode as ts.Identifier).text;
 
           addToUsed(startNode, identifier);
