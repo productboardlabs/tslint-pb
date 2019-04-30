@@ -1,0 +1,13 @@
+import { show, TypeSwag } from 'selectors/some';
+
+export default select([superSelect], () => ({
+  a: superCalculate<TypeSwag>(superSelect)
+}))(component);
+
+export default select([superSelect], () => ({
+  a: superCalculate(superSelect) as TypeSwag
+}))(component);
+
+export default select([superSelect], () => ({
+  a: superCalculate(superSelect as TypeSwag) as TypeSwag
+}))(component)
