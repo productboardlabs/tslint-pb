@@ -4,3 +4,10 @@ const superRecursiveSelector = select(
     return superRecursiveSelector
   },
 );
+
+export default select(
+  [],
+  (): boolean => {
+    return notASelector.superRecursiveSelector
+  },
+);
