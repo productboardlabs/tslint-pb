@@ -112,15 +112,23 @@ class NoUnusedDependenciesWalker extends Lint.RuleWalker {
     const [dependencyNode, implementationNode] = node.arguments;
 
     if (
-      dependencyNode.kind === ts.SyntaxKind.ArrayLiteralExpression &&
-      implementationNode.kind === ts.SyntaxKind.ArrowFunction
+      ts.isArrowFunction(implementationNode) &&
+      ts.isArrayLiteralExpression(dependencyNode)
     ) {
-      const selectorsNodesIdentifiers = (dependencyNode as ts.ArrayLiteralExpression).elements.filter(
-        a => a.kind === ts.SyntaxKind.Identifier
-      ) as Array<ts.Identifier>;
+      const selectorsNodesIdentifiers = dependencyNode.elements.filter(
+        ts.isIdentifier
+      );
+
       const dependencies = selectorsNodesIdentifiers.map(
         element => element.text
       );
+
+      if (
+        ts.isVariableDeclaration(node.parent) &&
+        ts.isIdentifier(node.parent.name)
+      ) {
+        dependencies.push(node.parent.name.text);
+      }
 
       const usedDependencies: Array<string> = [];
 
@@ -169,9 +177,9 @@ class NoUnusedDependenciesWalker extends Lint.RuleWalker {
       );
 
       unusedDependencies.forEach(unusedSelector => {
-        const unusedDependenciesNode = (dependencyNode as ts.ArrayLiteralExpression).elements.find(
-          element => (element as ts.Identifier).text === unusedSelector
-        );
+        const unusedDependenciesNode = dependencyNode.elements
+          .filter(ts.isIdentifier)
+          .find(element => element.text === unusedSelector);
 
         if (unusedDependenciesNode) {
           this.addIssue(
