@@ -1,0 +1,13 @@
+const superRecursiveSelector = select(
+  [],
+  (): boolean => {
+    return superRecursiveSelector
+  },
+);
+
+export default select(
+  [],
+  (): boolean => {
+    return notASelector.superRecursiveSelector
+  },
+);
