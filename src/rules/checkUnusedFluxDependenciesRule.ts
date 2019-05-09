@@ -160,6 +160,7 @@ class NoUnusedDependenciesWalker extends Lint.RuleWalker {
         if (
           ts.isIdentifier(startNode) &&
           !ts.isTypeReferenceNode(startNode.parent) &&
+          !ts.isPropertyAssignment(startNode.parent) &&
           !ts.isPropertyAccessExpression(startNode.parent)
         ) {
           const identifier = startNode.text;
