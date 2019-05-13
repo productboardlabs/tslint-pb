@@ -1,0 +1,7 @@
+import * as React from 'react';
+
+import { RandomGroupId, RandomGroup as TRandomGroup } from 'stores/RandomStore';
+
+import { createMagic } from 'constants/magic';
+
+console.log('ok');

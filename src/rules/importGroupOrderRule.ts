@@ -59,6 +59,7 @@ type NormalizedConfiguration = {
 
 function formatImport(text: ImportType["i"]["text"], moduleSpecifier: string) {
   const namedImportsRegex = /{(.*)}/;
+  const asImportRegex = /as *(\w*)/;
   // let's omit the code style (new lines) entirely, it's prettier's job
   let inlinedText = text.replace(/\n/g, "");
 
@@ -70,7 +71,18 @@ function formatImport(text: ImportType["i"]["text"], moduleSpecifier: string) {
     .split(",")
     .map(a => a.trim())
     .filter(a => a)
-    .sort()
+    .map(imp => {
+      const matches = imp.match(asImportRegex);
+      if (matches && matches[1]) return [matches[1], imp];
+
+      return [imp];
+    })
+    .sort(([a], [b]) => {
+      if (a < b) return -1;
+      if (a > b) return 1;
+      return 0;
+    })
+    .map(([sortBase, imp]) => (imp ? imp : sortBase))
     .join(", ");
 
   // with syntax * as there might be moduleSpecifier ommited, so we need to reconstruct it.
