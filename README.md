@@ -139,6 +139,33 @@ connect(
 )
 ```
 
+### flux-action-dipatch
+
+This rule checks if all AppDispatcher.handleViewAction calls are typed.
+
+#### Configuration
+
+```json
+{
+  "rules": {
+    "flux-action-dispatch": true
+  }
+}
+```
+
+#### Example
+
+```text
+AppDispatcher.handleViewAction({
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  type: 'SIMPLE_ACTION',
+~~~~~~~~~~~~~~~~~~~~~~~~
+  value: 123,
+~~~~~~~~~~~~~
+});
+~~ [handleViewAction must be typed or called with action object containing "type" property only.]
+```
+
 ### selectors-format
 
 To enforce some rules to our [selectors](https://github.com/productboard/pb-frontend/blob/master/docs/flux.md#selectors-1).
