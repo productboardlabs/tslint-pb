@@ -4,6 +4,9 @@ import { RandomGroup as TRandomGroup, RandomGroupId } from 'stores/RandomStore';
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [Named imports are not sorted in alphabetical order]
 
 import { createMagic } from 'constants/magic';
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [Import convention has been violated. This is auto-fixable.]
+
+import { hasAnything, getSomething, isSwag } from 'modules/editor/libs/NodeUtils';
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [Named imports are not sorted in alphabetical order]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [Import convention has been violated. This is auto-fixable.]
 
 console.log('ok');

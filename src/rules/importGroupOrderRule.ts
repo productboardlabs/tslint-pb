@@ -59,7 +59,7 @@ type NormalizedConfiguration = {
 
 function formatImport(text: ImportType["i"]["text"], moduleSpecifier: string) {
   const namedImportsRegex = /{(.*)}/;
-  const asImportRegex = /as *(\w*)/;
+  const asImportRegex = / +as +(\w*)/;
   // let's omit the code style (new lines) entirely, it's prettier's job
   let inlinedText = text.replace(/\n/g, "");
 
