@@ -1,0 +1,17 @@
+AppDispatcher.handleViewAction<QuickAddIntoRequestedAction>({
+  type: 'QUICK_ADD_INTO_REQUESTED',
+  parentModelType,
+  parentId,
+  itemToAdd: {
+    modelType: ModelType.FEATURE,
+    ...optionalParams,
+  },
+});
+
+AppDispatcher.handleViewAction<Action>(a);
+
+AppDispatcher.handleViewAction({
+  type: 'SIMPLE_ACTION',
+});
+
+AppDispatcher.handleViewAction({type: 'ANOTHER_SIMPLE_ACTION'});

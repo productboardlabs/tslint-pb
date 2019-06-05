@@ -3,6 +3,7 @@
   "rules": {
     "check-unused-flux-dependencies": true,
     "sort-flux-dependencies": true,
+    "flux-action-dispatch": true,
     "selectors-format": [
       true,
       {

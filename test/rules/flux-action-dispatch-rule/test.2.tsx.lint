@@ -1,0 +1,30 @@
+AppDispatcher.handleViewAction({
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  type: 'QUICK_ADD_INTO_REQUESTED',
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  parentModelType,
+~~~~~~~~~~~~~~~~~~
+  parentId,
+~~~~~~~~~~~
+  itemToAdd: {
+~~~~~~~~~~~~~~
+    modelType: ModelType.FEATURE,
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ...optionalParams,
+~~~~~~~~~~~~~~~~~~~~~~
+  },
+~~~~
+});
+~~ [handleViewAction must be typed or called with action object containing "type" property only.]
+
+AppDispatcher.handleViewAction(a);
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ [handleViewAction must be typed or called with action object containing "type" property only.]
+
+AppDispatcher.handleViewAction({
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  type: 'SIMPLE_ACTION',
+~~~~~~~~~~~~~~~~~~~~~~~~
+  value: 123,
+~~~~~~~~~~~~~
+});
+~~ [handleViewAction must be typed or called with action object containing "type" property only.]

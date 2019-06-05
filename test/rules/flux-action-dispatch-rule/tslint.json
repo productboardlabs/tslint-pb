@@ -1,0 +1,5 @@
+{
+  "rules": {
+    "flux-action-dispatch": true
+  }
+}
