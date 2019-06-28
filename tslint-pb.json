@@ -4,6 +4,7 @@
     "check-unused-flux-dependencies": true,
     "sort-flux-dependencies": true,
     "flux-action-dispatch": true,
+    "correct-react-import": true,
     "selectors-format": [
       true,
       {
