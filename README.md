@@ -170,21 +170,21 @@ AppDispatcher.handleViewAction({
 
 To enforce some rules to our [selectors](https://github.com/productboard/pb-frontend/blob/master/docs/flux.md#selectors-1).
 
-1) **Dependency array must be defined as array literal.**
-It's better practice to have the list of dependencies inlined rather than in some variable outside of selector definition.
+1. **Dependency array must be defined as array literal.**
+   It's better practice to have the list of dependencies inlined rather than in some variable outside of selector definition.
 
-2) **Dependency array must contain at least one dependency.**
-Otherwise it's probably misused selector and developer should use plain (possibly memoized) function.
+2. **Dependency array must contain at least one dependency.**
+   Otherwise it's probably misused selector and developer should use plain (possibly memoized) function.
 
-3) **Function in selector must be defined as arrow literal.**
-First for readability we want the function to be inlined and not defined outside of selector definition.
-Also, we don't wanna use `function` definition, to avoid possible `this` abuse.
+3. **Function in selector must be defined as arrow literal.**
+   First for readability we want the function to be inlined and not defined outside of selector definition.
+   Also, we don't wanna use `function` definition, to avoid possible `this` abuse.
 
-4) **Default arguments in selector function are forbidden.**
-Unfortunately, JavaScript doesn't play well with default arguments when using memoization on dynamic number of arguments. Therefore we have to disable it to prevent nasty bugs.
+4. **Default arguments in selector function are forbidden.**
+   Unfortunately, JavaScript doesn't play well with default arguments when using memoization on dynamic number of arguments. Therefore we have to disable it to prevent nasty bugs.
 
-5) **All arguments in selector function must be typed.**
-Unfortunately if you skip types on arguments, it just uses implicit `any` (probably because of generics used in `select` definition). It's potentially error-prone, so it's good idea to enforce it.
+5. **All arguments in selector function must be typed.**
+   Unfortunately if you skip types on arguments, it just uses implicit `any` (probably because of generics used in `select` definition). It's potentially error-prone, so it's good idea to enforce it.
 
 #### Configuration
 
@@ -232,6 +232,31 @@ select(
         ~~~        [All arguments must be typed.]
 );
 
+```
+
+### correct-react-import
+
+Ensure that React is consistently imported without asterisk import.
+
+#### Configuration
+
+```json
+{
+  "rules": {
+    "correct-react-import": true
+  }
+}
+```
+
+#### Example
+
+```text
+import * as React from 'react';
+       ~~~~~~~~~~               [Don't import React with asterisk, use `import React from 'react';`]
+```
+
+```
+import React from 'react';
 ```
 
 ## Install

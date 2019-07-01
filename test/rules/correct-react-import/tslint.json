@@ -1,0 +1,5 @@
+{
+  "rules": {
+    "correct-react-import": [true]
+  }
+}
