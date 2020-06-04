@@ -284,7 +284,7 @@ _tslint.json_
 
 ## Contribution
 
-There are test provided, just run `yarn run test`. For quick prototyping use http://astexplorer.net – it's a great tool! Any contribution welcomed! 🙏
+There are test provided, just run `yarn run test`. For quick prototyping use <http://astexplorer.net> or <https://ts-ast-viewer.com> for TS – those are great tools! Any contribution welcomed! 🙏
 
 ## License
 
